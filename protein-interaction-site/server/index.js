@@ -5,7 +5,7 @@ const fs = require('fs');
 const csv = require('csv');
 
 const app = express();
-const PORT = 5000;
+const PORT = 5001;
 
 // 启用CORS
 app.use(cors());
@@ -28,7 +28,10 @@ const parseTSV = (filePath) => {
 // 获取蛋白质互作数据
 app.get('/api/interactions', async (req, res) => {
   try {
-    const filePath = path.join(__dirname, '../../reason_result_NDH108_conbined.tsv');
+    const filePath = path.join(__dirname, '../..', 'reason_result_NDH108_conbined.tsv');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Data file not found' });
+    }
     const data = await parseTSV(filePath);
     res.json(data);
   } catch (error) {
@@ -40,9 +43,12 @@ app.get('/api/interactions', async (req, res) => {
 app.get('/api/protein/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const filePath = path.join(__dirname, '../../NDH108.protmap.json');
+    const filePath = path.join(__dirname, '../..', 'NDH108.protmap.json');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Protein data file not found' });
+    }
     const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    const protein = data.find(p => p.id === id);
+    const protein = data[id];
     
     if (protein) {
       res.json(protein);
@@ -55,11 +61,11 @@ app.get('/api/protein/:id', async (req, res) => {
 });
 
 // 静态文件服务
-app.use(express.static(path.join(__dirname, '../../protein-interaction-site/build')));
+app.use(express.static(path.join(__dirname, '../build')));
 
 // 客户端路由处理
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../protein-interaction-site/build/index.html'));
+  res.sendFile(path.join(__dirname, '../build/index.html'));
 });
 
 // 启动服务器
