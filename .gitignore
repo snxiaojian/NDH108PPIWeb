@@ -13,6 +13,7 @@ yarn-error.log
 
 # Build
 /build
+!/protein-interaction-site/build
 /dist
 
 # IDE
