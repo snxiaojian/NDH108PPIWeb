@@ -133,7 +133,7 @@ function App() {
 
             <Paper elevation={0} sx={{ p: 3 }}>
               <ProteinNetwork 
-                selectedProtein={centerProtein} 
+                centerProtein={centerProtein} 
                 onSelectProtein={handleProteinSelect}
               />
             </Paper>

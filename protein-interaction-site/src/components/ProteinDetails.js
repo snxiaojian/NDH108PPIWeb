@@ -13,7 +13,8 @@ import {
   Alert,
   Collapse,
   IconButton,
-  Tooltip
+  Tooltip,
+  Link
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import InfoIcon from '@mui/icons-material/Info';
@@ -33,7 +34,147 @@ const StyledChip = styled(Chip)(({ theme, color }) => ({
   transition: 'all 0.2s ease'
 }));
 
-const DetailItem = memo(({ label, content, color, icon, expanded, onToggle }) => {
+const ClickableContent = memo(({ type, content }) => {
+  const getLink = (type, value) => {
+    switch (type) {
+      case 'K':
+        return `https://www.genome.jp/dbget-bin/www_bget?${value}`;
+      case 'IPRs':
+        return `https://www.ebi.ac.uk/interpro/entry/${value}`;
+      case 'KOG':
+        return `https://www.ncbi.nlm.nih.gov/research/cog/kog/${value}`;
+      case 'KEGG_Pathways':
+        // 不移除ko前缀，直接使用完整的pathway ID
+        return `https://www.genome.jp/pathway/${value}`;
+      default:
+        return null;
+    }
+  };
+
+  const LinkComponent = ({ id, type }) => (
+    <Link 
+      href={getLink(type, id)} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      sx={{ 
+        color: 'primary.main', 
+        textDecoration: 'none', 
+        '&:hover': { 
+          textDecoration: 'underline',
+          opacity: 0.8 
+        },
+        fontWeight: 500
+      }}
+    >
+      {id}
+    </Link>
+  );
+
+  const renderLink = (text, type) => {
+    if (type === 'KEGG_Pathways') {
+      // 对于KEGG通路，先检查是否包含分号
+      if (text.includes(';')) {
+        const pathways = text.split(';').map(p => p.trim());
+        return (
+          <>
+            {pathways.map((pathway, index) => {
+              const keggMatch = pathway.match(/^(ko\d+):\s*(.+)$/);
+              return (
+                <React.Fragment key={index}>
+                  {keggMatch ? (
+                    <>
+                      <LinkComponent id={keggMatch[1]} type={type} />
+                      {`: ${keggMatch[2]}`}
+                    </>
+                  ) : (
+                    renderLink(pathway, type)
+                  )}
+                  {index < pathways.length - 1 && <span>; </span>}
+                </React.Fragment>
+              );
+            })}
+          </>
+        );
+      }
+      
+      // 单个KEGG通路的处理
+      const keggMatch = text.match(/^(ko\d+):\s*(.+)$/);
+      if (keggMatch) {
+        return (
+          <>
+            <LinkComponent id={keggMatch[1]} type={type} />
+            {`: ${keggMatch[2]}`}
+          </>
+        );
+      }
+    }
+
+    // 处理其他 ID (K00487, IPR036396 等)
+    const parts = [];
+    let lastIndex = 0;
+    const regex = /(K\d+|IPR\d+|KOG\d+|ko\d+)/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const id = match[0];
+      const currentType = id.startsWith('ko') ? 'KEGG_Pathways' : type;
+      const link = getLink(currentType, id);
+      
+      if (link) {
+        if (match.index > lastIndex) {
+          parts.push(text.substring(lastIndex, match.index));
+        }
+        parts.push(<LinkComponent key={match.index} id={id} type={currentType} />);
+        lastIndex = match.index + id.length;
+      }
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? <>{parts}</> : text;
+  };
+
+  if (!content) return null;
+
+  if (Array.isArray(content)) {
+    return content.map((item, index) => {
+      // 处理分号分隔的多个条目
+      if (type === 'KEGG_Pathways' && item.includes(';')) {
+        const pathways = item.split(';').map(p => p.trim());
+        return (
+          <Typography key={index} variant="body2">
+            {pathways.map((pathway, pIndex) => (
+              <React.Fragment key={pIndex}>
+                <Box component="span">
+                  {renderLink(pathway, type)}
+                </Box>
+                {pIndex < pathways.length - 1 && (
+                  <Box component="span" sx={{ mx: 0.5 }}>;</Box>
+                )}
+              </React.Fragment>
+            ))}
+          </Typography>
+        );
+      }
+      
+      return (
+        <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+          • {renderLink(item, type)}
+        </Typography>
+      );
+    });
+  }
+
+  return (
+    <Typography variant="body2">
+      {renderLink(content, type)}
+    </Typography>
+  );
+});
+
+const DetailItem = memo(({ label, content, color, icon, expanded, onToggle, sectionKey }) => {
   if (!content || (Array.isArray(content) && content.length === 0)) {
     return null;
   }
@@ -59,17 +200,7 @@ const DetailItem = memo(({ label, content, color, icon, expanded, onToggle }) =>
       </ListItem>
       <Collapse in={expanded}>
         <Box sx={{ pl: 2 }}>
-          {Array.isArray(content) ? (
-            content.map((item, index) => (
-              <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                • {item}
-              </Typography>
-            ))
-          ) : (
-            <Typography variant="body2">
-              {content}
-            </Typography>
-          )}
+          <ClickableContent type={sectionKey} content={content} />
         </Box>
       </Collapse>
     </StyledSection>
@@ -86,12 +217,12 @@ function ProteinDetails({ protein }) {
     { key: 'Biological_process', label: 'Biological Process', color: '#e3f2fd', icon: '🧬' },
     { key: 'Cellular_component', label: 'Cellular Component', color: '#e8f5e9', icon: '🔬' },
     { key: 'Molecular_function', label: 'Molecular Function', color: '#fff3e0', icon: '⚛️' },
-    { key: 'KOG', label: 'KOG', color: '#f3e5f5', icon: '📊' },
-    { key: 'K', label: 'K', color: '#e8eaf6', icon: '🔑' },
-    { key: 'KEGG_Pathways', label: 'KEGG Pathways', color: '#fbe9e7', icon: '🛣️' },
-    { key: 'IPRs', label: 'IPRs', color: '#e0f2f1', icon: '🔍' },
+    { key: 'KOG', label: 'KOG (Eukaryotic Orthologous Groups)', color: '#f3e5f5', icon: '📊' },
+    { key: 'K', label: 'K (KEGG Orthology)', color: '#e8eaf6', icon: '🔑' },
+    { key: 'KEGG_Pathways', label: 'KEGG Pathways (Kyoto Encyclopedia of Genes and Genomes)', color: '#fbe9e7', icon: '🛣️' },
+    { key: 'IPRs', label: 'IPRs (InterPro Protein Domains)', color: '#e0f2f1', icon: '🔍' },
     { key: 'Subcellular_localization', label: 'Subcellular Localization', color: '#f9fbe7', icon: '📍' },
-    { key: 'signalP', label: 'Signal P', color: '#efebe9', icon: '📡' }
+    { key: 'signalP', label: 'Signal P (Signal Peptide Prediction)', color: '#efebe9', icon: '📡' }
   ];
 
   const toggleSection = useCallback((key) => {
@@ -214,6 +345,7 @@ function ProteinDetails({ protein }) {
               icon={icon}
               expanded={expanded[key]}
               onToggle={() => toggleSection(key)}
+              sectionKey={key}
             />
           ))}
         </List>
