@@ -18,8 +18,21 @@ const parseTSV = (filePath) => {
   return new Promise((resolve, reject) => {
     const results = [];
     fs.createReadStream(filePath)
-      .pipe(csv.parse({ delimiter: '\t', columns: true }))
-      .on('data', (data) => results.push(data))
+      .pipe(csv.parse({ 
+        delimiter: '\t', 
+        columns: ['protein1', 'protein2', 'score'],
+        skip_empty_lines: true,
+        from_line: 2 // 跳过标题行
+      }))
+      .on('data', (data) => {
+        if (data.protein1 && data.protein2 && data.score) {
+          results.push({
+            protein1: data.protein1.trim(),
+            protein2: data.protein2.trim(),
+            score: data.score.trim()
+          });
+        }
+      })
       .on('end', () => resolve(results))
       .on('error', reject);
   });
@@ -33,7 +46,23 @@ app.get('/api/interactions', async (req, res) => {
       return res.status(404).json({ error: 'Data file not found' });
     }
     const data = await parseTSV(filePath);
-    res.json(data);
+    
+    // 如果指定了蛋白质ID，则只返回相关的互作
+    const proteinId = req.query.proteinId;
+    if (proteinId) {
+      const relevantData = data.filter(interaction => 
+        interaction.protein1 === proteinId || interaction.protein2 === proteinId
+      );
+      return res.json({
+        total: relevantData.length,
+        interactions: relevantData
+      });
+    }
+    
+    res.json({
+      total: data.length,
+      interactions: data
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
