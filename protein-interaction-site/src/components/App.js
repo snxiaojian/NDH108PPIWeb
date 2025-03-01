@@ -69,7 +69,7 @@ function App() {
       <Container maxWidth="xl">
         <Paper elevation={0} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ fontWeight: 'bold' }}>
-            Protein Interaction Network Visualization
+            NDH108 Protein Interaction Network Visualization
           </Typography>
           <Typography variant="body1" color="text.secondary" paragraph>
             This system displays protein-protein interactions. Red edges indicate experimentally verified interactions (score=1), 
