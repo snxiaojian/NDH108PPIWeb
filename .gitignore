@@ -12,7 +12,6 @@ yarn-error.log
 .env.production.local
 
 # Build
-/build
 !/protein-interaction-site/build
 /dist
 
