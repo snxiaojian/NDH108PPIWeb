@@ -24,12 +24,12 @@ function App() {
 
   const handleSearch = () => {
     if (!searchTerm) {
-      setSearchError('请输入蛋白质ID');
+      setSearchError('Please enter a protein ID');
       return;
     }
     
     if (!searchTerm.startsWith('NDH')) {
-      setSearchError('请输入有效的蛋白质ID（以NDH开头）');
+      setSearchError('Please enter a valid protein ID (starting with NDH)');
       return;
     }
 
@@ -53,10 +53,11 @@ function App() {
   const exampleProteins = [
     'NDH07G27970.1',
     'NDH05G05590.1', 
-    'NDH10G04270.1',
     'NDH18G16570.1',
-    'NDH10G01520.1',
-    'NDH09G31440.1'
+    'NDH09G31440.1',
+    'NDH03G44320.1',
+    'NDH14G07420.1',
+    'NDH05G33460.1'
   ];
 
   return (
@@ -68,11 +69,11 @@ function App() {
       <Container maxWidth="xl">
         <Paper elevation={0} sx={{ p: 3, mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom color="primary" sx={{ fontWeight: 'bold' }}>
-            蛋白质互作网络可视化
+            Protein Interaction Network Visualization
           </Typography>
           <Typography variant="body1" color="text.secondary" paragraph>
-            本系统展示了蛋白质之间的互作关系。红色连线表示实验验证的互作（score=1），灰色连线表示预测的互作（score＜1）。
-            点击节点可查看蛋白质的详细信息。
+            This system displays protein-protein interactions. Red edges indicate experimentally verified interactions (score=1), 
+            while gray edges represent predicted interactions (score＜1). Click on nodes to view detailed protein information.
           </Typography>
         </Paper>
 
@@ -82,7 +83,7 @@ function App() {
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
                 <TextField
                   fullWidth
-                  label="输入蛋白质ID"
+                  label="Enter Protein ID"
                   variant="outlined"
                   value={searchTerm}
                   onChange={(e) => {
@@ -92,7 +93,7 @@ function App() {
                   onKeyPress={handleKeyPress}
                   error={!!searchError}
                   helperText={searchError}
-                  placeholder="例如: NDH07G27970.1"
+                  placeholder="e.g. NDH07G27970.1"
                   size="medium"
                 />
                 <Button 
@@ -101,12 +102,12 @@ function App() {
                   startIcon={<SearchIcon />}
                   sx={{ minWidth: '120px' }}
                 >
-                  搜索
+                  Search
                 </Button>
               </Box>
 
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                示例蛋白质ID:
+                Example Protein IDs:
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {exampleProteins.map((id) => (
@@ -115,7 +116,9 @@ function App() {
                     label={id}
                     onClick={() => {
                       setSearchTerm(id);
-                      handleSearch();
+                      // 直接更新状态，不调用handleSearch
+                      setCenterProtein(id);
+                      setDetailProtein(id);
                     }}
                     color="primary"
                     variant="outlined"
