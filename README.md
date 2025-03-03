@@ -51,6 +51,9 @@ cp -r protein-interaction-site/server/* /var/www/peanut_interaction/server/
 
 # 复制必要的数据文件
 cp protein-interaction-site/server/data/* /var/www/peanut_interaction/server/data/
+
+scp -r build/* root@37.123.192.87:/var/www/peanut_interaction/
+scp -r server root@37.123.192.87:/var/www/peanut_interaction/
 ```
 
 ### 2.2 安装后端依赖
@@ -102,8 +105,7 @@ server {
     }
 
     # peanut_interaction API 配置
-    location /peanut_interaction/api/ {
-        rewrite ^/peanut_interaction/api/(.*) /api/$1 break;
+    location /api/ {
         proxy_pass http://localhost:5001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
