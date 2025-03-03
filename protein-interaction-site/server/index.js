@@ -80,7 +80,7 @@ const parseTSV = (filePath) => {
 // 获取蛋白质互作数据
 app.get('/api/interactions', async (req, res) => {
   try {
-    const filePath = path.join(__dirname, '../..', 'reason_result_NDH108_conbined.tsv');
+    const filePath = path.join(__dirname, 'data', 'reason_result_NDH108_conbined.tsv');
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Data file not found' });
     }
@@ -111,7 +111,7 @@ app.get('/api/interactions', async (req, res) => {
 app.get('/api/protein/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const filePath = path.join(__dirname, '../..', 'NDH108.protmap.json');
+    const filePath = path.join(__dirname, 'data', 'NDH108.protmap.json');
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Protein data file not found' });
     }
@@ -132,7 +132,7 @@ app.get('/api/protein/:id', async (req, res) => {
 app.get('/api/protein/:id/sequence', async (req, res) => {
   try {
     const { id } = req.params;
-    const filePath = path.join(__dirname, '../..', 'expressed_NDH108.fasta');
+    const filePath = path.join(__dirname, 'data', 'expressed_NDH108.fasta');
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Sequence data file not found' });
