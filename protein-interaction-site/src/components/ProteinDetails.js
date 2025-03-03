@@ -14,7 +14,8 @@ import {
   Collapse,
   IconButton,
   Tooltip,
-  Link
+  Link,
+  Paper
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import InfoIcon from '@mui/icons-material/Info';
@@ -209,11 +210,13 @@ const DetailItem = memo(({ label, content, color, icon, expanded, onToggle, sect
 
 function ProteinDetails({ protein }) {
   const [details, setDetails] = useState(null);
+  const [sequence, setSequence] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState({});
 
   const sections = [
+    { key: 'sequence', label: 'Protein Sequence', color: '#fafafa', icon: '🧬' },
     { key: 'Biological_process', label: 'Biological Process', color: '#e3f2fd', icon: '🧬' },
     { key: 'Cellular_component', label: 'Cellular Component', color: '#e8f5e9', icon: '🔬' },
     { key: 'Molecular_function', label: 'Molecular Function', color: '#fff3e0', icon: '⚛️' },
@@ -235,40 +238,59 @@ function ProteinDetails({ protein }) {
   useEffect(() => {
     if (!protein) {
       setDetails(null);
+      setSequence(null);
       return;
     }
 
-    const fetchDetails = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${API_BASE_URL}/protein/${protein}`);
-        if (!response.ok) {
-          if (response.status === 404) {
+        
+        // 并行请求详情和序列数据
+        const [detailsResponse, sequenceResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/protein/${protein}`),
+          fetch(`${API_BASE_URL}/protein/${protein}/sequence`)
+        ]);
+
+        if (!detailsResponse.ok) {
+          if (detailsResponse.status === 404) {
             throw new Error(`未找到蛋白质 ${protein} 的详细信息`);
           }
           throw new Error('获取蛋白质详情失败，请稍后重试');
         }
-        const data = await response.json();
-        if (!data || Object.keys(data).length === 0) {
+
+        const detailsData = await detailsResponse.json();
+        let sequenceData = null;
+        
+        if (sequenceResponse.ok) {
+          sequenceData = await sequenceResponse.json();
+        }
+
+        if (!detailsData || Object.keys(detailsData).length === 0) {
           throw new Error(`蛋白质 ${protein} 暂无详细信息`);
         }
-        setDetails(data);
+
+        setDetails(detailsData);
+        setSequence(sequenceData?.sequence);
+
         // 初始化展开状态
         const initialExpanded = {};
-        Object.keys(data).forEach(key => {
+        Object.keys(detailsData).forEach(key => {
           initialExpanded[key] = true;
         });
+        initialExpanded.sequence = true;
         setExpanded(initialExpanded);
       } catch (err) {
         setError(err.message);
         setDetails(null);
+        setSequence(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDetails();
+    fetchData();
   }, [protein]);
 
   if (!protein) {
@@ -336,7 +358,35 @@ function ProteinDetails({ protein }) {
         <Divider sx={{ my: 2 }} />
         
         <List sx={{ p: 0 }}>
-          {sections.map(({ key, label, color, icon }) => (
+          {/* 序列信息展示 */}
+          <DetailItem
+            key="sequence"
+            label="Protein Sequence"
+            content={
+              sequence ? (
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    p: 2, 
+                    backgroundColor: '#fafafa',
+                    fontFamily: 'monospace',
+                    wordBreak: 'break-all',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.5'
+                  }}
+                >
+                  {sequence}
+                </Paper>
+              ) : '序列信息不可用'
+            }
+            color="#f5f5f5"
+            icon="🧬"
+            expanded={expanded.sequence}
+            onToggle={() => toggleSection('sequence')}
+            sectionKey="sequence"
+          />
+          
+          {sections.filter(s => s.key !== 'sequence').map(({ key, label, color, icon }) => (
             <DetailItem
               key={key}
               label={label}

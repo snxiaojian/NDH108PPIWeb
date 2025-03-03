@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv');
+const readline = require('readline');
 
 const app = express();
 const PORT = 5001;
@@ -12,6 +13,44 @@ app.use(cors());
 
 // 解析JSON请求体
 app.use(express.json());
+
+// 解析FASTA文件
+const parseFasta = async (filePath) => {
+  const fileStream = fs.createReadStream(filePath);
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity
+  });
+
+  let currentHeader = '';
+  let currentSequence = '';
+  const sequences = {};
+
+  for await (const line of rl) {
+    if (line.startsWith('>')) {
+      // 如果已经有序列在处理中，保存它
+      if (currentHeader && currentSequence) {
+        sequences[currentHeader] = currentSequence;
+      }
+      // 提取序列ID（去除>符号并只取第一个空格前的内容）
+      currentHeader = line.slice(1).split(' ')[0].trim();
+      currentSequence = '';
+    } else {
+      // 将序列行添加到当前序列中
+      currentSequence += line.trim();
+    }
+  }
+
+  // 保存最后一个序列
+  if (currentHeader && currentSequence) {
+    sequences[currentHeader] = currentSequence;
+  }
+
+  return sequences;
+};
+
+// 缓存解析后的序列数据
+let sequencesCache = null;
 
 // 解析TSV文件
 const parseTSV = (filePath) => {
@@ -83,6 +122,33 @@ app.get('/api/protein/:id', async (req, res) => {
       res.json(protein);
     } else {
       res.status(404).json({ error: 'Protein not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 获取蛋白质序列信息
+app.get('/api/protein/:id/sequence', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const filePath = path.join(__dirname, '../..', 'expressed_NDH108.fasta');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Sequence data file not found' });
+    }
+
+    // 如果缓存中没有数据，则解析文件
+    if (!sequencesCache) {
+      sequencesCache = await parseFasta(filePath);
+    }
+
+    const sequence = sequencesCache[id];
+    
+    if (sequence) {
+      res.json({ id, sequence });
+    } else {
+      res.status(404).json({ error: 'Sequence not found' });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
