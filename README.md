@@ -50,9 +50,7 @@ cp -r protein-interaction-site/build/* /var/www/peanut_interaction/
 cp -r protein-interaction-site/server/* /var/www/peanut_interaction/server/
 
 # 复制必要的数据文件
-cp NDH108.protmap.json /var/www/peanut_interaction/server/data/
-cp reason_result_NDH108_conbined.tsv /var/www/peanut_interaction/server/data/
-cp expressed_NDH108.fasta /var/www/peanut_interaction/server/data/
+cp protein-interaction-site/server/data/* /var/www/peanut_interaction/server/data/
 ```
 
 ### 2.2 安装后端依赖
@@ -63,7 +61,7 @@ npm install --production
 
 ### 2.3 启动后端服务
 ```bash
-pm2 start app.js --name "peanut-interaction-api"
+pm2 start index.js --name "peanut-interaction-api"
 ```
 
 ## 3. 部署 peanut_family 网站
@@ -82,24 +80,30 @@ cp -r peanut-family-site/* /var/www/peanut_family/
 
 ### 4.1 创建 Nginx 配置文件
 ```bash
-sudo nano /etc/nginx/sites-available/peanut_sites
+sudo vi /etc/nginx/sites-available/peanut_sites
 ```
 
 添加以下配置：
 ```nginx
-# peanut_interaction 配置
 server {
     listen 80;
-    server_name peanut_interaction;
-    root /var/www/peanut_interaction;
-    index index.html;
+    server_name 37.123.192.87;
 
-    location / {
-        try_files $uri $uri/ /index.html;
+    # peanut_interaction 配置
+    location /peanut_interaction/ {
+        alias /var/www/peanut_interaction/;
+        try_files $uri $uri/ /peanut_interaction/index.html;
     }
 
-    # API 反向代理配置
-    location /api {
+    # peanut_interaction 静态资源
+    location /static/ {
+        alias /var/www/peanut_interaction/static/;
+        try_files $uri $uri/ =404;
+    }
+
+    # peanut_interaction API 配置
+    location /peanut_interaction/api/ {
+        rewrite ^/peanut_interaction/api/(.*) /api/$1 break;
         proxy_pass http://localhost:5001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -107,17 +111,18 @@ server {
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
     }
-}
 
-# peanut_family 配置
-server {
-    listen 80;
-    server_name peanut_family;
-    root /var/www/peanut_family;
-    index index.html;
+    # peanut_family 配置
+    location /peanut_family/ {
+        alias /var/www/peanut_family/;
+        try_files $uri $uri/ /peanut_family/index.html;
+    }
 
-    location / {
-        try_files $uri $uri/ /index.html;
+    # 禁止访问 . 文件
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
     }
 }
 ```
@@ -166,4 +171,5 @@ pm2 logs peanut-interaction-api
 1. 确保服务器防火墙允许 80 端口访问
 2. 建议配置 SSL 证书启用 HTTPS
 3. 定期备份数据和配置文件
-4. 监控服务器资源使用情况，特别是内存使用 
+4. 监控服务器资源使用情况，特别是内存使用
+5. 数据文件已经包含在项目中，确保它们被正确复制到 server/data 目录
