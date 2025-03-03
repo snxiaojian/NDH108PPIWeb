@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peanut Gene Family Browser</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+                        "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 2.2rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.95rem;
+        }
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #e9ecef;
+        }
+        .search-container {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .search-box {
+            padding: 10px 14px;
+            width: 300px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        .search-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .search-button:hover {
+            background-color: #0056b3;
+        }
+        .search-stats {
+            margin-right: auto;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Peanut Gene Family Browser</h1>
+        
+        <div class="search-container">
+            <div class="search-stats" id="searchStats">Found 178 results</div>
+            <input type="text" id="searchInput" class="search-box" placeholder="Search gene families..." list="searchSuggestions">
+            <button class="search-button" id="searchButton">Search</button>
+            <button class="search-button" id="clearButton">Clear</button>
+            <datalist id="searchSuggestions"></datalist>
+        </div>
+        <table id="geneTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Gene Family Name</th>
+                    <th>Gene Count</th>
+                    <th>Function</th>
+                    <th>Genome Source</th>
+                    <th>Year</th>
+                    <th>References</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+        // Enhanced search functionality
+        const searchInput = document.getElementById('searchInput');
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            const filteredData = geneData.filter(item => 
+                Object.values(item).some(value => 
+                    value && value.toString().toLowerCase().includes(searchTerm)
+                )
+            );
+            
+            populateTable(filteredData);
+            updateSearchStats(filteredData.length);
+        }
+
+        function updateSearchStats(count) {
+            const stats = document.getElementById('searchStats');
+            if (count === 0) {
+                stats.textContent = 'No results found';
+                stats.style.color = '#dc3545';
+            } else {
+                stats.textContent = `Found ${count} results`;
+                stats.style.color = '#6c757d';
+            }
+        }
+
+        // Initialize search
+        searchInput.addEventListener('input', performSearch);
+        document.getElementById('searchButton').addEventListener('click', performSearch);
+        document.getElementById('clearButton').addEventListener('click', () => {
+            searchInput.value = '';
+            performSearch();
+        });
+
+        // Add autocomplete
+        searchInput.addEventListener('input', function() {
+            const term = this.value.toLowerCase();
+            if(term.length < 2) return;
+            
+            const suggestions = [...new Set(geneData
+                .flatMap(item => [
+                    item['Gene Family Name'],
+                    item.Function,
+                    item.Genome
+                ])
+                .filter(Boolean)
+                .filter(text => text.toLowerCase().includes(term))
+            )].slice(0, 5);
+            
+            const datalist = document.getElementById('searchSuggestions');
+            datalist.innerHTML = suggestions
+                .map(s => `<option value="${s}">`)
+                .join('');
+        });
+
+        // Populate table data
+        function populateTable(data) {
+            const tbody = document.querySelector('#geneTable tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.Number}</td>
+                    <td>${item['Gene Family Name']}</td>
+                    <td>${item['Gene\u00A0Count']}</td>
+                    <td>${item.Function}</td>
+                    <td>${item.Genome || ''}</td>
+                    <td>${item.Year}</td>
+                    <td>${item.References}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Initialize
+        populateTable(geneData);
+        document.getElementById('searchStats').textContent = ''; // Hide stats initially
+    </script>
+</body>
+</html>
