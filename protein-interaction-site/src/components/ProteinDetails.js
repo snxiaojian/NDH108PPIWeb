@@ -253,32 +253,41 @@ function ProteinDetails({ protein }) {
           fetch(`${API_BASE_URL}/protein/${protein}/sequence`)
         ]);
 
-        if (!detailsResponse.ok) {
-          if (detailsResponse.status === 404) {
-            throw new Error(`未找到蛋白质 ${protein} 的详细信息`);
-          }
-          throw new Error('获取蛋白质详情失败，请稍后重试');
-        }
-
-        const detailsData = await detailsResponse.json();
+        let detailsData = null;
         let sequenceData = null;
+        let hasData = false;
         
+        // 获取详情数据
+        if (detailsResponse.ok) {
+          detailsData = await detailsResponse.json();
+          if (detailsData && Object.keys(detailsData).length > 0) {
+            hasData = true;
+          }
+        }
+        
+        // 获取序列数据
         if (sequenceResponse.ok) {
           sequenceData = await sequenceResponse.json();
+          if (sequenceData?.sequence) {
+            hasData = true;
+          }
         }
 
-        if (!detailsData || Object.keys(detailsData).length === 0) {
+        // 如果没有任何数据，显示错误
+        if (!hasData) {
           throw new Error(`蛋白质 ${protein} 暂无详细信息`);
         }
 
-        setDetails(detailsData);
+        setDetails(detailsData || {});
         setSequence(sequenceData?.sequence);
 
         // 初始化展开状态
         const initialExpanded = {};
-        Object.keys(detailsData).forEach(key => {
-          initialExpanded[key] = true;
-        });
+        if (detailsData) {
+          Object.keys(detailsData).forEach(key => {
+            initialExpanded[key] = true;
+          });
+        }
         initialExpanded.sequence = true;
         setExpanded(initialExpanded);
       } catch (err) {
@@ -327,7 +336,7 @@ function ProteinDetails({ protein }) {
     );
   }
 
-  if (!details) {
+  if (!details && !sequence) {
     return (
       <Card sx={{ height: '100%' }}>
         <CardContent>
@@ -387,16 +396,18 @@ function ProteinDetails({ protein }) {
           />
           
           {sections.filter(s => s.key !== 'sequence').map(({ key, label, color, icon }) => (
-            <DetailItem
-              key={key}
-              label={label}
-              content={details[key]}
-              color={color}
-              icon={icon}
-              expanded={expanded[key]}
-              onToggle={() => toggleSection(key)}
-              sectionKey={key}
-            />
+            details && details[key] ? (
+              <DetailItem
+                key={key}
+                label={label}
+                content={details[key]}
+                color={color}
+                icon={icon}
+                expanded={expanded[key]}
+                onToggle={() => toggleSection(key)}
+                sectionKey={key}
+              />
+            ) : null
           ))}
         </List>
       </CardContent>
